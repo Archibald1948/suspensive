@@ -17,6 +17,7 @@ describe('<ErrorBoundary/>', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllEnvs()
     Throw.reset()
   })
 
@@ -64,6 +65,30 @@ describe('<ErrorBoundary/>', () => {
         </ErrorBoundary>
       )
     ).toThrow(ERROR_MESSAGE)
+  })
+
+  it.each([
+    { nodeEnv: 'development', isWarned: true },
+    { nodeEnv: 'production', isWarned: false },
+  ])('should warn that fallback is required only in development (NODE_ENV: $nodeEnv)', ({ nodeEnv, isWarned }) => {
+    vi.stubEnv('NODE_ENV', nodeEnv)
+    const consoleError = vi.spyOn(console, 'error').mockClear()
+
+    render(
+      <ErrorBoundary fallback={({ error }) => <>{error.message} of Parent</>}>
+        <ErrorBoundary fallback={undefined}>
+          <Throw.Error message={ERROR_MESSAGE} after={0} />
+        </ErrorBoundary>
+      </ErrorBoundary>
+    )
+
+    const isFallbackWarned = consoleError.mock.calls.some(([message]) =>
+      String(message).includes('ErrorBoundary of @suspensive/react requires a defined fallback')
+    )
+    consoleError.mockRestore()
+
+    expect(isFallbackWarned).toBe(isWarned)
+    expect(screen.queryByText(`${ERROR_MESSAGE} of Parent`)).toBeInTheDocument()
   })
 
   it('should catch it even if thrown null', async () => {
