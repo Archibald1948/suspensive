@@ -484,6 +484,52 @@ describe('<ErrorBoundary/>', () => {
     expect(screen.queryByText(`${ERROR_MESSAGE} of Parent`)).toBeInTheDocument()
   })
 
+  it.each([
+    {
+      childCalledTimes: 1,
+      parentCalledTimes: 0,
+      createError: () => new CustomError(ERROR_MESSAGE),
+      errorText: `${ERROR_MESSAGE} of Child`,
+    },
+    {
+      childCalledTimes: 0,
+      parentCalledTimes: 1,
+      createError: () => new Error(ERROR_MESSAGE),
+      errorText: `${ERROR_MESSAGE} of Parent`,
+    },
+  ])(
+    'should catch Error by one criteria(ErrorValidator declared with the function keyword)',
+    ({ childCalledTimes, parentCalledTimes, createError, errorText }) => {
+      // Unlike an arrow function, a function declaration has an object prototype.
+      // So `error instanceof shouldCatch` returns false instead of throwing,
+      // and shouldCatch should still be used as a validator.
+      function isCustomError(error: Error) {
+        return error instanceof CustomError
+      }
+
+      const onErrorParent = vi.fn()
+      const onErrorChild = vi.fn()
+
+      render(
+        <ErrorBoundary fallback={({ error }) => <>{error.message} of Parent</>} onError={onErrorParent}>
+          <ErrorBoundary
+            shouldCatch={isCustomError}
+            fallback={({ error }) => <>{error.message} of Child</>}
+            onError={onErrorChild}
+          >
+            {createElement(() => {
+              throw createError()
+            })}
+          </ErrorBoundary>
+        </ErrorBoundary>
+      )
+
+      expect(onErrorChild).toHaveBeenCalledTimes(childCalledTimes)
+      expect(onErrorParent).toHaveBeenCalledTimes(parentCalledTimes)
+      expect(screen.queryByText(errorText)).toBeInTheDocument()
+    }
+  )
+
   it('should return false when errorMatcher is neither boolean nor function', () => {
     const onErrorParent = vi.fn()
     const onErrorChild = vi.fn()
