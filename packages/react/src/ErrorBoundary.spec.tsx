@@ -17,7 +17,7 @@ describe('<ErrorBoundary/>', () => {
 
   afterEach(() => {
     vi.useRealTimers()
-vi.unstubAllEnvs()
+    vi.unstubAllEnvs()
     vi.stubEnv('NODE_ENV', 'development')
     Throw.reset()
   })
